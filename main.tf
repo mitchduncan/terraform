@@ -5,12 +5,12 @@ provider "aws" {
   profile = "default"
 }
 
-resource "aws_instance" "mdtestvm2" {
+resource "aws_instance" "mdtestvm3" {
   ami           = "ami-2757f631"
   instance_type = "t2.micro"
 }
 
-resource "aws_s3_bucket" "mdlthsbucketname401" {
+resource "aws_s3_bucket" "mdlthsbucketnamethai" {
   bucket = "mdlthsnewbucketprice"
   acl    = "public-read"
 }
