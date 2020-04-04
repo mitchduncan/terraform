@@ -10,7 +10,7 @@ provider "aws" {
 #  instance_type = "t2.micro"
 # }
 
-resource "aws_s3_bucket" "mdlthsbucketnamethai" {
-  bucket = "mdnewbucketinApril"
+resource "aws_s3_bucket" "bucket_resource" {
+  bucket = "mdbucketApril4th2020"
   acl    = "public-read"
 }
