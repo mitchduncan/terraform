@@ -1,0 +1,281 @@
+Terraform Notes from Documentation - https://learn.hashicorp.com/terraform/getting-started/intro
+
+# Questions to answer
+What is Terraform?
+What problems can it solve?
+How does it compare to existing software?
+
+What is Terraform?
+===================
+
+Terraform is a tool for building, changing, and versioning infrastructure safely and efficiently
+Terraform can manage existing and popular service providers as well as custom in-house solutions
+Terraform builds infrastructure as efficiently as possible
+Use Terraform to manage real infrastructure
+
+Terraform can manage many providers - https://www.terraform.io/docs/providers/index.html
+Terraform can also manage multiple providers in a single configuration
+
+The set of files used to describe infrastructure in Terraform is known as a Terraform configuration
+A configuration should be in its own directory
+
+The profile attribute refers to the AWS Config File in ~/.aws/credentials on MacOS and Linux
+
+provider "aws" {
+  profile    = "default"
+  region     = "us-east-1"
+}
+
+resource "aws_instance" "example" {
+  ami           = "ami-2757f631"
+  instance_type = "t2.micro"
+}
+
+To verify an AWS profile and ensure Terraform has correct provider credentials, install the AWS CLI and run 'aws configure'.
+The AWS CLI will then verify and save your AWS Access Key ID and Secret Access Key
+
+The provider block is used to configure the named provider, in our case "aws".
+A provider is responsible for creating and managing resources.
+A provider is a plugin that Terraform uses to translate the API interactions with the service.
+A provider is responsible for understanding API interactions and exposing resources.
+
+Multiple provider blocks can exist if a Terraform configuration manages resources from different providers.
+You can even use multiple providers together.
+For example you could pass the ID of an AWS instance to a monitoring resource from DataDog
+
+Resources
+=========
+
+The resource block defines a piece of infrastructure.
+A resource might be a physical component such as an EC2 instance, or it can be a logical resource such as a Heroku application
+The resource block has two strings before the block: the resource type and the resource name
+The prefix of the type maps to the provider
+The arguments for the resource are within the resource block
+Our providers reference documents the required and optional arguments for each resource providers
+
+Initialization
+==============
+
+The first command to run for a new configuration -- or after checking out an existing configuration from version control -- is terraform init.
+Subsequent commands will use local settings and data that are initialized by terraform init.
+Terraform uses a plugin-based architecture to support hundreds of infrastructure and service providers.
+The terraform init command downloads and installs providers used within the configuration, which in this case is the aws provider.
+Terraform downloads the aws provider and installs it in a hidden subdirectory of the current working directory.
+The output shows which version of the plugin was installed.
+
+State File
+==========
+Terraform also wrote some data into the terraform.tfstate file.
+This state file is extremely important; it keeps track of the IDs of created resources so that Terraform knows what it is managing.
+This file must be saved and distributed to anyone who might run Terraform.
+It is generally recommended to setup remote state when working with Terraform,
+to share the state automatically, but this is not necessary for simple situations like this Getting Started guide.
+You can inspect the current state using terraform show.
+
+Manually Managing State
+=======================
+Terraform has a built in command called terraform state which is used for advanced state management.
+In cases where a user would need to modify the state file by finding resources in the terraform.tfstate file with terraform state list.
+This will give us a list of resources as addresses and resource IDs that we can then modify
+
+For more information about the terraform state command and subcommands for moving or removing resources from state,
+see the CLI state command documentation - https://www.terraform.io/docs/commands/state/index.html
+
+Changing Infrastructure
+=======================
+As you change Terraform configurations, Terraform builds an execution plan that only modifies what is necessary to reach your desired state.
+By using Terraform to change infrastructure, you can version control not only your configurations but also your state so you can see how the
+infrastructure evolved over time.
+
+Destroy
+=======
+The terraform destroy command terminates resources defined in your Terraform configuration.
+This command is the reverse of terraform apply in that it terminates all the resources specified by the configuration.
+It does not destroy resources running elsewhere that are not described in the current configuration.
+The - prefix indicates that the instance will be destroyed.
+Just like with apply, Terraform determines the order in which things must be destroyed
+
+Resource Dependencies
+=====================
+You can have a configuration with multiples resources
+Terraform configurations can contain multiple resources, multiple resource types, and these types can even span multiple providers
+Important to remember that you can reference the attributes of a resource to configure subsequent resources
+Remember that you can reference the attributes of a resource to configure subsequent resources
+
+Implicit Dependencies
+=====================
+- Terraform can automatically infer when one resource depends on another
+- Terraform uses this dependency information to determine the correct order in which to create the different resources
+- Implicit dependencies via interpolation expressions are the primary way to inform Terraform about these relationships, and should be used whenever possible
+
+Explicit Dependencies
+=====================
+- Sometimes there are dependencies between resources that are not visible to Terraform.
+- The depends_on argument is accepted by any resource and accepts a list of resources to create explicit dependencies for.
+- For example, perhaps an application we will run on our EC2 instance expects to use a specific Amazon S3 bucket, but that dependency
+- is configured inside the application code and thus not visible to Terraform.
+- In that case, we can use depends_on to explicitly declare the dependency
+
+    # New resource for the S3 bucket our application will use.
+    resource "aws_s3_bucket" "example" {
+      bucket = "terraform-getting-started-guide"
+      acl    = "private"
+    }
+
+    # Change the aws_instance we declared earlier to now include "depends_on"
+    resource "aws_instance" "example" {
+      ami           = "ami-2757f631"
+      instance_type = "t2.micro"
+
+      # Tells Terraform that this EC2 instance must be created only after the
+      # S3 bucket has been created.
+      depends_on = [aws_s3_bucket.example]
+    }
+
+Non-Dependent Resources
+=======================
+Because this new instance does not depend on any other resource, it can be created in parallel with the other resources.
+Where possible, Terraform will perform operations concurrently to reduce the total time taken to apply changes
+
+Provision
+=========
+Provisioners initialize instances when they're created
+Provisioners let you upload files, run shell scripts, or install and trigger other software like configuration management tools, etc
+
+Define a Provisioner
+====================
+resource "aws_instance" "example" {
+  ami           = "ami-b374d5a5"
+  instance_type = "t2.micro"
+
+  provisioner "local-exec" {
+    command = "echo ${aws_instance.example.public_ip} > ip_address.txt"
+  }
+}
+Multiple provisioner blocks can be added to define multiple provisioning steps
+Terraform supports multiple provisioners - https://www.terraform.io/docs/provisioners/index.html
+Provisioners are a last resort
+Another useful provisioner is remote-exec which invokes a script on a remote resource after it is created
+In order to use a remote-exec provisioner, you must choose an ssh or winrm connection in the form of a connection block within the provisioner
+Here's an example below:
+
+    provider "aws" {
+      profile = "default"
+      region  = "us-west-2"
+    }
+
+    resource "aws_key_pair" "example" {
+      key_name   = "examplekey"
+      public_key = file("~/.ssh/terraform.pub")
+    }
+
+    resource "aws_instance" "example" {
+      key_name      = aws_key_pair.example.key_name
+      ami           = "ami-04590e7389a6e577c"
+      instance_type = "t2.micro"
+
+      connection {
+        type        = "ssh"
+        user        = "ec2-user"
+        private_key = file("~/.ssh/terraform")
+        host        = self.public_ip
+      }
+
+      provisioner "remote-exec" {
+        inline = [
+          "sudo amazon-linux-extras enable nginx1.12",
+          "sudo yum -y install nginx",
+          "sudo systemctl start nginx"
+        ]
+      }
+    }
+
+Running Provisioners
+====================
+Provisioners are only run when a resource is created
+They are not a replacement for configuration management and changing the software of an already-running server,
+and are instead just meant as a way to bootstrap a server
+For configuration management, you should use Terraform provisioning to invoke a real configuration management solution
+By default, Terraform will output anything from provisioners to the console
+
+Tainted Resources
+=================
+If a resource successfully creates but fails during provisioning, Terraform will error and mark the resource as "tainted"
+A resource that is tainted has been physically created, but can't be considered safe to use since provisioning failed
+When you generate your next execution plan, Terraform will remove any tainted resources and create new resources,
+attempting to provision them again after creation
+
+Manually Tainting Resources
+===========================
+In cases where you want to manually destroy and recreate a resource, Terraform has a built in taint function in the CLI
+This command will not modify infrastructure, but does modify the state file in order to mark a resource as tainted
+Once a resource is marked as tainted, the next plan will show that the resource will be destroyed and recreated and
+the next apply will implement this change.
+
+To taint a resource, use the following command:
+
+  terraform taint resource.id
+
+Destroy Provisioners
+====================
+Provisioners can also be defined that run only during a destroy operation
+These are useful for performing system cleanup, extracting data, etc
+
+Input Variables
+===============
+For all files which match terraform.tfvars or *.auto.tfvars present in the current directory, Terraform automatically loads them to
+populate variables
+
+A terraform.tfvars file persists variable values
+Terraform will automatically load this file to populate variable values if it exists
+
+If the file is named something else, you can use the -var-file flag directly to specify a file
+These files are the same syntax as Terraform configuration files
+And like Terraform configuration files, these files can also be JSON
+
+When declaring a variable, if no default value is set, the variable is required
+
+Terraform will read environment variables in the form of TF_VAR_name to find the value for a variable
+For example, the TF_VAR_region variable can be set to set the region variable
+Terraform 0.12 introduces the ability to populate complex variable types from the UI prompt
+
+If no value is assigned to a variable via any of these methods and the variable has a default key in its declaration,
+that value will be used for the variables
+
+You can specify lists in a terraform.tfvars file:
+    cidrs = [ "10.0.0.0/16", "10.1.0.0/16" ]
+
+Maps are a way to create variables that are lookup tables
+
+    variable "amis" {
+      type = "map"
+      default = {
+        "us-east-1" = "ami-b374d5a5"
+        "us-west-2" = "ami-4b32be2b"
+      }
+    }
+
+A variable can have a map type assigned explicitly, or it can be implicitly declared as a map by specifying a default value that is a map
+
+Output Variables
+================
+Output variables are used to organize data to be easily queried and shown back to the Terraform user
+Outputs are a way to tell Terraform what data is Important
+Multiple output blocks can be defined to specify multiple output variables
+
+Creating Modules
+================
+- https://www.terraform.io/docs/modules/index.html
+A module is a container for multiple resources that are used together
+Modules can be used to create lightweight abstractions, so that you can describe your infrastructure in terms of its architecture,
+rather than directly in terms of physical objects
+Modules in Terraform are self-contained packages of Terraform configurations that are managed as a group
+Modules are used to create reusable components, improve organization, and to treat pieces of infrastructure as a black box
+A good module should raise the level of abstraction by describing a new concept in your architecture that is constructed from resource
+types offered by providers
+The source argument in a module block tells Terraform where to find the source code for the desired child module
+The source attribute is the only mandatory argument for modules
+It tells Terraform where the module can be retrieved
+Terraform automatically downloads and manages modules for you
+Terraform module registry - https://registry.terraform.io/
+Use the version attribute in the module block to specify versions
