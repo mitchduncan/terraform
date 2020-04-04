@@ -7,11 +7,11 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "mdlthsbucketremote" {
-  bucket = "mdlthsnewbucketFeb27th2020"
+  bucket = "mdbucketApril4th2020"
   acl    = "public-read"
 }
 
-resource "aws_instance" "mdtestvm3" {
-  ami           = "ami-2757f631"
-  instance_type = "t2.micro"
-}
+# resource "aws_instance" "mdtestvm3" {
+#   ami           = "ami-2757f631"
+#   instance_type = "t2.micro"
+# }
