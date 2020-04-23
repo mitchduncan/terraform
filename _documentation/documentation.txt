@@ -1,0 +1,19 @@
+Terraform Documentation
+
+https://www.terraform.io/docs/configuration/index.html
+
+
+Terraform's configuration language is declarative
+Terraform automatically processes resources in the correct order
+A Terraform provider defines and manages a set of resource types
+Most providers are associated with a particular cloud or on-premises infrastructure service
+
+Blocks
+Arguments
+Expressions
+
+A module is a collection of .tf files kept together in a directory
+The root module is built from the configuration files in the current working directory when Terraform is run
+This module may reference child modules in other directories, which can in turn reference other modules, etc
+The simplest Terraform configuration is a single root module containing only a single .tf files
+Terraform doesn't have a concept of platform-independent resource types — resources are always tied to a provider

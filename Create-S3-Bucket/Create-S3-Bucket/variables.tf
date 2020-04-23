@@ -6,8 +6,8 @@ variable "bucket_acl" {
   default = "private"
 }
 
-variable "bucket_name" {
-  default = "mdbuck4"
+variable "bucket_id" {
+  default = "mdbucks3"
 }
 
 variable "bucket_region" {
